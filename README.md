@@ -1,82 +1,156 @@
-# Leaflet Homework: Visualizing Data with Leaflet
+<h3 align="center">Earthquakes Around the World in the Past Week</h3>
 
-## Background
 
-![1-Logo](Images/1-Logo.png)
+<p align="center">
+     Using leaflet and javascript to visualize earthquakes from around the world.
+    <br />
+    <a href="https://github.com/HsuChe/leaflet-challenge"><strong>Project Github URL »</strong></a>
+    <br />
+    <br />
+  </p>
+</p>
 
-Welcome to the United States Geological Survey, or USGS for short. The USGS is responsible for providing scientific data about natural hazards, the health of our ecosystems and environment; and the impacts of climate and land-use change. Their scientists develop new methods and tools to supply timely, relevant, and useful information about the Earth and its processes. As a new hire, you will be helping them out with an exciting new project!
 
-The USGS is interested in building a new set of tools that will allow them to visualize their earthquake data. They collect a massive amount of data from all over the world each day, but they lack a meaningful way of displaying it. Their hope is that being able to visualize their data will allow them to better educate the public and other government organizations (and hopefully secure more funding) on issues facing our planet.
+<!-- ABOUT THE PROJECT -->
 
-### Before You Begin
+## About The Project
 
-1. Create a new repository for this project called `leaflet-challenge`. **Do not add this homework to an existing repository**.
+![hero image](Images/hero_image.jpg)
 
-2. Clone the new repository to your computer.
+Earthquakes are one of the most davastating natural disasters and tracking them is very critical to figure out how to direct resources to help people who were affected by them. 
 
-3. Inside your local git repository, create a directory for the Leaflet challenge. Use the folder names to correspond to the challenges: **Leaflet-Step-1** and **Leaflet-Step-2**.
+We will be using the powerful leaflet modules to visualize earthquake activities on Earth. The data will be from the eathquake.usgs.gov API that is updated around every five minutes. We will be pulling geoJSON for activties from the past week. 
 
-4. This homework uses both **html** and **JavaScript** so be sure to add all the necessary files. These will be the main files to run for analysis.
+## Visualization Goals
 
-5. Push the above changes to GitHub or GitLab.
+1. We are creating three different topographies to represent the information.
+2. We are using color codes and the radius of the markers to indicate the depth and magnitude of the earthquake events.
+3. We are creating a toggle to add and remove the earthquake data layer from the map. 
 
-## Your Task
+## Importing the API to d3 and leaflet to render the map.
 
-### Level 1: Basic Visualization
+We are going to generate pass the geoJSON through javascript to generate the information for the application
 
-![2-BasicMap](Images/2-BasicMap.png)
+We begin the process by create the init function and within the function we will call d3 to parse the JSON information.
 
-Your first task is to visualize an earthquake data set.
+```sh
+d3.json(queryUrl).then(function(data){
+    createFeatures(data.features.)
+})
 
-1. **Get your data set**
+```
 
-   ![3-Data](Images/3-Data.png)
+Next we pass the data features as a geoJSON to be rendered by leaflet. 
 
-   The USGS provides earthquake data in a number of different formats, updated every 5 minutes. Visit the [USGS GeoJSON Feed](http://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php) page and pick a data set to visualize. When you click on a data set, for example "All Earthquakes from the Past 7 Days", you will be given a JSON representation of that data. You will use the URL of this JSON to pull in the data for our visualization.
+```sh
+    var earthqueakes = L.geoJSON(earthquakeData, {
+        onEachFeature: (feature, layer) => {
+            layer.bindPopup( `<h3>${feature.properties.place}</h3>
+        <hr>
+        <p>Magnitude: ${feature.properties.mag}
+        | Depth: ${feature.geometry.coordinates[2]}
+        </p>
+        `)
+        },
+        pointToLayer: (feature, latlng) => {
+            return new L.circle(latlng, circleInfo(feature.properties.mag, latlng.alt))
+        }
+    })
+```
+The function will pull the relevent information for each earthquake even and render the Popup window when the marker is clicked displaying the information. 
 
-   ![4-JSON](Images/4-JSON.png)
+Then it will generate the markers with circles with its radius and color based on the altitude and magnitude of the earth quake event. 
 
-2. **Import & Visualize the Data**
+```sh 
+    let circleInfo = (magnitude, alt) => {
+        return {
+            radius: radiusSize(magnitude),
+            fillColor: colorInfo(alt),
+            fillOpacity: 1,
+            stroke: False
+        }
+    };
 
-   Create a map using Leaflet that plots all of the earthquakes from your data set based on their longitude and latitude.
+    let colorInfo = (alt) => {
+        if (alt <= 5) {
+        return '#FFCDD2';
+    } else if (alt <= 12) {
+        return '#E57373';
+    } else if (alt <=18) {
+        return '#F44336'
+    } else if (alt <=24 ) {
+        return '#D32F2F'
+    } else if (alt <=30 ) {
+        return '#FF5252'
+    } else {
+        return '#D50000'
+        };
+    };
 
-   * Your data markers should reflect the magnitude of the earthquake by their size and and depth of the earthquake by color. Earthquakes with higher magnitudes should appear larger and earthquakes with greater depth should appear darker in color.
+    let radiusSize = (magnitude) => {
+        return Math.pow(magnitude, 2)*500
+    }
+```
 
-   * **HINT:** The depth of the earth can be found as the third coordinate for each earthquake.
+After the settings for the circle markers are formed, we can begin the process of rendering out the tile layers and all of the markers through leaflets.
 
-   * Include popups that provide additional information about the earthquake when a marker is clicked.
+```sh
+    createMap(earthquakes);
 
-   * Create a legend that will provide context for your map data.
+    let createMap = (earthquakes) => {
+        let map =  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+    let satilite = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+        maxZoom: 20,
+        subdomains:['mt0','mt1','mt2','mt3']
+        });
 
-   * Your visualization should look something like the map above.
+    let outdoors = L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',{
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
+        });
+    };
+```
+After the tile layers of the leaflet map is created, we can assign values to the baseMaps, overlayMaps, myMap, and controls
 
-- - -
+```sh
+    let baseMaps = {
+        "Satellite" : satillite,
+        "Default": map, 
+        "Outdoors": outdoors
+    };
 
-### Level 2: More Data (Optional)
+    let overlayMaps = {
+        Earthquakes: earthquakes
+    };
 
-![5-Advanced](Images/5-Advanced.png)
+    let myMap = L.map("map", {
+        center: [0,0],
+        zoom: 2,
+        layers: [map, earthquakes]
+    });
 
-The USGS wants you to plot a second data set on your map to illustrate the relationship between tectonic plates and seismic activity. You will need to pull in a second data set and visualize it alongside your original set of data. Data on tectonic plates can be found at <https://github.com/fraxen/tectonicplates>.
+    L.control.layers(baseMaps, overlayMaps, {collapsed: flase}).addTo(myMap);
+```
 
-In this step, you will:
+Then we can generate the legend that defines the color codes
 
-* Plot a second data set on our map.
+```sh
+    let legend = L.control({position: 'bottomright'});
+        legend.onAdd = (myMap) => {
+            let div = L.DomUtil.create('div', 'info legend');
+            let altitude = [5,12,18,24,30];
+            let labels = ['Alt'];
+        };
 
-* Add a number of base maps to choose from as well as separate out our two different data sets into overlays that can be turned on and off independently.
+        altitude.map((element, index)) => {
+            div.innerHTML += `<i style = "background: ${colorInfo(altitude[index + 1])}"> ${labels} </i> ${element}${altitude[index +1] ?}&ndash;${altitude[index + 1]}<br>:+`
+        };
+        return div;
+    };
 
-* Add layer controls to our map.
+    legend.addTo(myMap);
+```
+Then we can activate the init().
 
-- - -
-
-### Assessment
-
-Your final product will be assessed according to [this grading rubric](Leaflet_Grading_Rubric.pdf)
-
-**Good luck!**
-
-## Rubric
-
-[Unit 15 Rubric - Leaflet Homework - Visualizing Data with Leaflet](https://docs.google.com/document/d/1kDNeT4a54ik_AZrHYN3LmVMqH0hDuiwbK2h5lHNxumQ/edit?usp=sharing)
-
-___
-© 2021  Trilogy Education Services, a 2U, Inc. brand. All Rights Reserved.	

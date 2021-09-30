@@ -1,56 +1,63 @@
 // Store our API endpoint as queryUrl.
-let queryUrl = earthquakeJsonPath7days
-
-// Perform a GET request to the query URL/
-d3.json(queryUrl).then(function (data) {
-  // Once we get a response, send the data.features object to the createFeatures function.
-  createFeatures(data.features);
-});
-
-let circleInfo = (magnitude) => {
-    return {
-        radius: radiusSize(magnitude),
-        fillColor: colorInfo(magnitude),
-        fillOpacity: 1,
-        stroke: false
-    }
-}
-
-let radiusSize = (magnitude)=> {
-    return magnitude * 30000
+let init = ()=> {
+  // Perform a GET request to the query URL/
+  d3.json(queryUrl).then(function (data) {
+    // Once we get a response, send the data.features object to the createFeatures function.
+    createFeatures(data.features);
+  });
 };
 
-let colorInfo = (magnitude) => {
-    if (magnitude <= 1) {
+let queryUrl = earthquakeJsonPath7days
+
+let circleInfo = (magnitude, alt) => {
+    return {
+        radius: radiusSize(magnitude),
+        fillColor: colorInfo(alt),
+        fillOpacity: 1,
+        stroke: false
+    };
+};
+
+let radiusSize = (magnitude)=> {
+    return Math.pow(magnitude,2)*500
+};
+
+let colorInfo = (alt) => {
+    if (alt <= 5) {
         return '#FFCDD2';
-    } else if (magnitude <= 2) {
+    } else if (alt <= 12) {
         return '#E57373';
-    } else if (magnitude <=3) {
+    } else if (alt <=18) {
         return '#F44336'
-    } else if (magnitude <=4 ) {
+    } else if (alt <=24 ) {
         return '#D32F2F'
-    } else if (magnitude <=5 ) {
+    } else if (alt <=30 ) {
         return '#FF5252'
     } else {
         return '#D50000'
     }
 }
 
-function createFeatures(earthquakeData) {
+let createFeatures = (earthquakeData) => {
 
   // Define a function that we want to run once for each feature in the features array.
   // Give each feature a popup that describes the place and time of the earthquake.
 
   // Create a GeoJSON layer that contains the features array on the earthquakeData object.
   // Run the onEachFeature function once for each piece of data in the array.
-  var earthquakes = L.geoJSON(earthquakeData, {
+  let earthquakes = L.geoJSON(earthquakeData, {
     onEachFeature: (feature,layer) => {
        layer.bindPopup( `<h3>${feature.properties.place}</h3>
         <hr>
-        <p>Magnitude: ${feature.properties.mag}</p>`)
+        <p>Magnitude: ${feature.properties.mag}
+        | Depth: ${feature.geometry.coordinates[2]}
+        </p>
+        
+        `)
+        
     },
     pointToLayer: (feature, latlng) => {
-       return new  L.circle(latlng, circleInfo(feature.properties.mag))
+       return new  L.circle(latlng, circleInfo(feature.properties.mag, latlng.alt))
     }
   });
 
@@ -58,42 +65,65 @@ function createFeatures(earthquakeData) {
   createMap(earthquakes);
 }
 
-function createMap(earthquakes) {
+let createMap = (earthquakes) => {
 
   // Create the base layers.
-  var street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  let map =  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  })
+});
+  let satilite = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
+});
 
-  var topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-  });
+  let outdoors = L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',{
+  maxZoom: 20,
+  subdomains:['mt0','mt1','mt2','mt3']
+});
 
   // Create a baseMaps object.
-  var baseMaps = {
-    "Street Map": street,
-    "Topographic Map": topo
+  let baseMaps = {
+    "Satellite": satilite,
+    "Default": map,
+    "Outdoors": outdoors
   };
 
   // Create an overlay object to hold our overlay.
-  var overlayMaps = {
-    Earthquakes: earthquakes
+  let overlayMaps = {
+    Earthquakes: earthquakes,
   };
 
   // Create our map, giving it the streetmap and earthquakes layers to display on load.
-  var myMap = L.map("map", {
+  let myMap = L.map("map", {
     center: [
-      37.09, -95.71
+      0,0
     ],
-    zoom: 5,
-    layers: [street, earthquakes]
+    zoom: 2,
+    layers: [map, earthquakes]
   });
 
-  // Create a layer control.
-  // Pass it our baseMaps and overlayMaps.
-  // Add the layer control to the map.
   L.control.layers(baseMaps, overlayMaps, {
     collapsed: false
   }).addTo(myMap);
 
-}
+  let legend = L.control ({position: 'bottomright'});
+  legend.onAdd = (myMap) => {
+
+    let div = L.DomUtil.create('div', 'info legend');
+    let altitude = [5,12,18,24,30];
+    let labels = ['Alt'];
+
+    for (let i = 0; i < altitude.length; i++) {
+      div.innerHTML +=
+      '<i style="background:' + colorInfo(altitude[i] + 1) + '">'+labels+'</i> ' +
+      altitude[i] + (altitude[i + 1] ? '&ndash;' + altitude[i + 1] + '<br>' : '+');
+    };
+      return div;
+  };
+  
+  legend.addTo(myMap);
+};
+
+  
+
+init()
